@@ -10,8 +10,8 @@ VideoWall 3×2 com **6 páginas** do mesmo relatório Power BI rodando 24/7:
 
 > IDs já configurados no `docker-compose.yml`:
 >
-> - **WorkspaceId**: `108148f0-f6cc-424f-b53d-f3532203cda1`
-> - **ReportId**: `687d3a0e-5dbc-44ce-9338-371f2df4a6c2`
+> - **WorkspaceId**: `secret Id`
+> - **ReportId**: `secret Id`
 >
 > Páginas exibidas: **Curva S**, **Atividades Visão Geral**, **Aderência a Programação**, **GV UVT**, **Planejamento Entressafra**, **Programação Semanal**.
 

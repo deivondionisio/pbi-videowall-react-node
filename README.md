@@ -1,116 +1,162 @@
 
-# Power BI VideoWall – React + Node + Docker (6 telas)
+# Power BI VideoWall – App‑Owns‑Data (React + Node + Docker)
 
-VideoWall 3×2 com **6 páginas** do mesmo relatório Power BI rodando 24/7:
+Videowall **3×2** (6 telas) exibindo **6 páginas** do **mesmo relatório Power BI** — 24/7 com:
+- **Renovação automática do Embed Token** **sem** recarregar o iframe (via `setAccessToken`).
+- Navegação para páginas por **`displayName`** (`getPages()` + `setActive()`).
+- Backend **Node/Express** com **MSAL Node (client credentials)** e **Power BI REST – Generate Token V2**.
+- Execução **Docker** (client + server).
 
-- Renovação automática de **Embed Token** (sem recarregar o iframe) com `setAccessToken`.
-- **Atualização automática** da página a cada **1 hora**, **preservando filtros** por página.
-- Seleção de páginas **automática** pelo `displayName` (`getPages` + `setPage`).
-- Backend Node/Express com **MSAL Node (client credentials)** e **Power BI REST – GenerateToken V2**.
-
-> IDs já configurados no `docker-compose.yml`:
->
-> - **WorkspaceId**: `secret Id`
-> - **ReportId**: `secret Id`
->
-> Páginas exibidas: **Curva S**, **Atividades Visão Geral**, **Aderência a Programação**, **GV UVT**, **Planejamento Entressafra**, **Programação Semanal**.
+> **Modelo de embedding**: **App‑Owns‑Data** (Embed for your customers), seguindo o **sample oficial** da Microsoft para **NodeJS / AppOwnsData**.  
+> **Geração de token**: **Generate Token V2** (permissões/limites/documentação oficial).  
+> **Frontend React**: wrapper **`powerbi-client-react`** e ciclo de vida de embed conforme docs.
 
 ---
 
-## 🗺️ Mapa de Rede / Arquitetura
+## Arquitetura & Pastas
 
 ```
-+-------------------------+           +---------------------+
-|  Polywall / Navegador  |           |  Microsoft Entra ID |
-|  (6 iframes React)     |           |  (OAuth - MSAL)     |
-+-----------+-------------+           +----------+----------+
-            |                                   ^
-            | HTTP (GET /api/embed-batch)       |
-            v                                   |
-+-----------+-------------+           +----------+----------+
-|    Backend (Node)       |  HTTPS    |  Power BI REST API |
-|  Express + MSAL Node    +---------->+  GenerateToken V2  |
-|  (porta 8080)           |           |  Reports/Datasets  |
-+-----------+-------------+           +----------+----------+
-            ^                                   |
-            |                                   |
-            | Embed Token + Embed Url           |
-            |                                   v
-+-----------+-------------+           +---------------------+
-|    Frontend (React)     |<----------+  Power BI Service   |
-|  Nginx (porta 3000)     |   iframe  |  (Report iFrame)    |
-+-------------------------+           +---------------------+
+server/
+  Dockerfile
+  package.json
+  config/
+    config.json
+  models/
+    embedConfig.js
+  src/
+    authentication.js
+    powerbi.js
+    server.js
+  public/
+  views/
+
+client/
+  Dockerfile
+  package.json
+  vite.config.js
+  index.html
+  src/
+    WallTile.jsx
+    main.jsx
+    styles.css
+
+docker-compose.yml
 ```
 
-- O **frontend React** embute 6 instâncias do relatório (uma por página) e
-  **renova o Embed Token** antes de expirar, **sem recarregar o iFrame**.
-- O **backend Node** autentica no Entra ID (client credentials) e chama a
-  **Power BI REST API** para **coletar embedUrl/datasetId** e **gerar o token V2**
-  cobrindo os 6 embeds.
+**Referências oficiais**:
+- Repositório **PowerBI‑Developer‑Samples** (NodeJS → *Embed for your customers / AppOwnsData*).
+- **Generate Token V2** (API REST) — campos, limites e permissões.
+- **`powerbi-client-react`** – `<PowerBIEmbed>`, eventos e atualização de token.
 
 ---
 
-## 🚀 Como rodar (Docker)
+## Requisitos & Licenciamento
 
-1. Copie `server/.env.sample` para `server/.env` e preencha:
-   - `TENANT_ID`, `CLIENT_ID`, `CLIENT_SECRET` (Service Principal com acesso ao workspace/dataset).
-2. (Opcional) Para aplicar **automaticamente** o filtro `Empresa = UVT`,
-   preencha no `docker-compose.yml` as variáveis:
-   - `VITE_EMPRESA_TABLE` e `VITE_EMPRESA_COLUMN` (ex.: `DimEmpresa` / `NomeEmpresa`).
-3. Suba tudo:
+- **App‑Owns‑Data** requer **capacidade** (Power BI Embedded A* ou Premium).  
+- **Service Principal** com acesso ao workspace/dataset (permissões adequadas).
 
-```bash
+---
+
+## Configuração (Server)
+
+Edite `server/config/config.json` (sem segredos):
+```json
+{
+  "authenticationMode": "ServicePrincipal",
+  "authorityUrl": "https://login.microsoftonline.com/",
+  "tenantId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "clientId": "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy",
+  "clientSecret": "<USE_ENV_CLIENT_SECRET>",
+  "scope": "https://analysis.windows.net/powerbi/api/.default",
+  "workspaceId": "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz",
+  "reportId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+}
+```
+
+> **Segurança**: **não** commitar segredos. Defina `CLIENT_SECRET` **via variável de ambiente**/Key Vault.
+
+---
+
+## Configuração (Client – 6 páginas do videowall)
+
+No `docker-compose.yml`, preencha:
+
+```yaml
+environment:
+  - VITE_API_BASE=http://server:5300
+  - VITE_REPORT_ID=${REPORT_ID}
+  - VITE_PAGE_1=${PAGE_1}
+  - VITE_PAGE_2=${PAGE_2}
+  - VITE_PAGE_3=${PAGE_3}
+  - VITE_PAGE_4=${PAGE_4}
+  - VITE_PAGE_5=${PAGE_5}
+  - VITE_PAGE_6=${PAGE_6}
+```
+
+Cada `PAGE_n` deve ser o **displayName** exato da página do relatório.
+
+---
+
+## Execução (Docker)
+
+PowerShell (Windows):
+```powershell
+$env:CLIENT_SECRET = '<seu_client_secret>'
+$env:REPORT_ID     = '<seu_report_id>'
+$env:PAGE_1 = 'Curva S'
+$env:PAGE_2 = 'Atividades Visão Geral'
+$env:PAGE_3 = 'Aderência a Programação'
+$env:PAGE_4 = 'GV UVT'
+$env:PAGE_5 = 'Planejamento Entressafra'
+$env:PAGE_6 = 'Programação Semanal'
+
 docker compose up -d --build
-# Frontend: http://localhost:3000
-# Backend:  http://localhost:8080
 ```
 
-As 6 páginas serão abertas em um grid 3×2. Se preferir, ajuste o CSS em `client/src/styles.css` para adequar ao seu VideoWall.
+- **Server** (health): http://localhost:5300/health → **OK**  
+- **Client** (videowall 3×2): http://localhost:3000
 
 ---
 
-## 📄 Páginas e filtros
+## API do Backend
 
-- **Curva S** – filtro: `Empresa = UVT` (se `VITE_EMPRESA_*` definidos)
-- **Atividades Visão Geral** – filtro: `Empresa = UVT`
-- **Aderência a Programação** – filtro: `Empresa = UVT`
-- **GV UVT** – sem filtros
-- **Planejamento Entressafra** – sem filtros
-- **Programação Semanal** – filtro: `Empresa = UVT`
-
-> Mesmo sem `VITE_EMPRESA_*`, qualquer filtro aplicado pelo operador é **preservado**
-> automaticamente (salvo localmente por página) e **reaplicado** após renovação e reload.
+- `GET /health` → `200 OK`  
+- `GET /getEmbedInfo?reportId=<id>` → `{ embedUrl, token, expiration, reportId, datasetId }`
 
 ---
 
-## 🧪 Notas de operação 24/7
+## Renovação do Token (sem recarregar)
 
-- **Renovação do token** acontece ~10 min antes da expiração (padrão 60 min), sem recarregar o iFrame.
-- **Reload** da página ocorre 1×/hora por robustez operacional; os filtros são preservados.
-- Para múltiplos players (várias máquinas exibindo o VideoWall), considere
-  persistir filtros em um repositório central (Redis/DB) em vez de `localStorage`.
-
----
-
-## 🛠️ Publicar no GitHub (CLI)
-
-```bash
-# dentro da pasta do projeto
-git init
-git add .
-git commit -m "feat: Power BI VideoWall (React+Node+Docker) - 6 páginas, token auto, filtros persistentes"
-
-# cria o repositório e faz push (substitua pelo seu usuário se necessário)
-gh repo create deivondionisio/pbi-videowall-react-node --private --source=. --remote=origin --push
+O client busca um novo token **antes** do `expiration` e atualiza o embed com:
+```js
+report.setAccessToken('<novo_token>');
 ```
 
 ---
 
-## 📚 Referências úteis
+## Troubleshooting
 
-- **Renovar token sem recarregar** com `setAccessToken` (Power BI Client APIs).
-- **Listar páginas e navegar** (`getPages` / `setPage`).
-- **Filtros** (`getFilters` / `setFilters`) e níveis (relatório/página/visual).
-- **Wrapper React oficial**: `powerbi-client-react`.
-- **GenerateToken V2** (Power BI REST) e **MSAL Node** (client credentials).
-```
+1. **401/403 ao gerar token**
+   - Confirme permissões do Service Principal no workspace/dataset.
+   - Verifique `tenantId`/`clientId` e `CLIENT_SECRET` no ambiente.
+   - Confirme capacidade (Embedded/Premium).
+
+2. **Páginas não carregam**
+   - Cheque `displayName` das páginas (acentos/espaços).
+   - Ajuste `VITE_PAGE_n`.
+
+3. **Token expira e não renova**
+   - Verifique chamada periódica ao `/getEmbedInfo` e uso de `setAccessToken`.
+
+---
+
+## Contribuições
+
+Pull Requests são bem‑vindos! Para roadmap (filtros por página, telemetria de token, resiliência de refresh), abra uma issue.
+
+---
+
+## Segurança
+
+- **Nunca** commit segredos (use Key Vault/ENV).  
+- Conceda ao Service Principal **apenas** as permissões necessárias.

@@ -1,0 +1,10 @@
+{
+  "authenticationMode": "ServicePrincipal",
+  "authorityUrl": "https://login.microsoftonline.com/",
+  "tenantId": "<TENANT_ID>",
+  "clientId": "<CLIENT_ID>",
+  "clientSecret": "<USE_ENV_CLIENT_SECRET>",
+  "scope": "https://analysis.windows.net/powerbi/api/.default",
+  "workspaceId": "<WORKSPACE_ID>",
+  "reportId": "<REPORT_ID>"
+}

@@ -1,14 +1,12 @@
 
-# build
-FROM node:20-alpine AS build
+FROM node:18-alpine as build
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
+COPY package.json ./
+RUN npm install --omit=dev
 COPY . .
 RUN npm run build
 
-# serve estático
 FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
-EXPOSE 80
-CMD ["nginx","-g","daemon off;"]
+EXPOSE 3000
+CMD ["nginx", "-g", "daemon off;"]

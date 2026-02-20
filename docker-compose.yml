@@ -1,39 +1,24 @@
-version: "3.9"
 
 services:
   server:
     build: ./server
     environment:
-      # >>> definidos na UI do Coolify <<<
-      - TENANT_ID=${TENANT_ID:?TENANT_ID not set}
-      - CLIENT_ID=${CLIENT_ID:?CLIENT_ID not set}
-      - CLIENT_SECRET=${CLIENT_SECRET:?CLIENT_SECRET not set}
-      - PORT=8080
-    # (Opcional) healthcheck ajuda o proxy a rotear só quando estiver saudável
-    # healthcheck:
-    #   test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080 || exit 1"]
-    #   interval: 30s
-    #   timeout: 5s
-    #   retries: 5
-
+      - NODE_ENV=production
+      - CLIENT_SECRET=${CLIENT_SECRET}
+    ports:
+      - "5300:5300"
   client:
     build: ./client
     environment:
-      # Fale com o backend pelo nome do serviço na rede do Compose
-      - VITE_API_BASE=http://server:8080
-
-      # IDs do seu ambiente Power BI (fixos)
-      - VITE_WORKSPACE_ID=108148f0-f6cc-424f-b53d-f3532203cda1
-      - VITE_REPORT_ID=687d3a0e-5dbc-44ce-9338-371f2df4a6c2
-
-      # Preencha para aplicar automaticamente "Empresa = UVT"
-      - VITE_EMPRESA_TABLE=${VITE_EMPRESA_TABLE:-}
-      - VITE_EMPRESA_COLUMN=${VITE_EMPRESA_COLUMN:-}
-
-    # Recomendo usar domínio do Coolify (proxy + SSL) em vez de mapear portas
-    # Se quiser testar por porta:
-    # ports:
-    #   - "3000:80"
-
+      - VITE_API_BASE=http://server:5300
+      - VITE_REPORT_ID=${REPORT_ID}
+      - VITE_PAGE_1=${PAGE_1}
+      - VITE_PAGE_2=${PAGE_2}
+      - VITE_PAGE_3=${PAGE_3}
+      - VITE_PAGE_4=${PAGE_4}
+      - VITE_PAGE_5=${PAGE_5}
+      - VITE_PAGE_6=${PAGE_6}
+    ports:
+      - "3000:80"
     depends_on:
       - server

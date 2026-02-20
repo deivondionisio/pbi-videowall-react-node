@@ -1,24 +1,85 @@
 
+version: "3.9"
+
+name: pbi-videowall
+
+networks:
+  videowall_net:
+    driver: bridge
+
+# Anchora apenas com OPCOES (sem 'driver' para evitar erro no schema do VS Code)
+x-logging-options: &logging-options
+  max-size: "10m"
+  max-file: "3"
+
+x-restart: &default-restart
+  restart: unless-stopped
+
+x-resources: &default-resources
+  deploy:
+    resources:
+      limits:
+        cpus: "${CPU_LIMITS:-0.75}"
+        memory: "${MEM_LIMITS:-512M}"
+      reservations:
+        cpus: "${CPU_RESERV:-0.25}"
+        memory: "${MEM_RESERV:-256M}"
+
 services:
+
   server:
-    build: ./server
+    build:
+      context: ./server
+      dockerfile: Dockerfile
     environment:
-      - NODE_ENV=production
-      - CLIENT_SECRET=${CLIENT_SECRET}
-    ports:
-      - "5300:5300"
+      NODE_ENV: production
+      CLIENT_SECRET: ${CLIENT_SECRET}
+      TENANT_ID: ${TENANT_ID:-}
+      CLIENT_ID: ${CLIENT_ID:-}
+      WORKSPACE_ID: ${WORKSPACE_ID:-}
+      REPORT_ID: ${REPORT_ID:-}
+    expose:
+      - "5300"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5300/health || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    logging:
+      driver: "json-file"
+      options: *logging-options
+    <<: [*default-restart, *default-resources]
+    networks:
+      - videowall_net
+
   client:
-    build: ./client
+    build:
+      context: ./client
+      dockerfile: Dockerfile
     environment:
-      - VITE_API_BASE=http://server:5300
-      - VITE_REPORT_ID=${REPORT_ID}
-      - VITE_PAGE_1=${PAGE_1}
-      - VITE_PAGE_2=${PAGE_2}
-      - VITE_PAGE_3=${PAGE_3}
-      - VITE_PAGE_4=${PAGE_4}
-      - VITE_PAGE_5=${PAGE_5}
-      - VITE_PAGE_6=${PAGE_6}
-    ports:
-      - "3000:80"
+      VITE_API_BASE: http://server:5300
+      VITE_REPORT_ID: ${REPORT_ID}
+      VITE_PAGE_1: ${PAGE_1}
+      VITE_PAGE_2: ${PAGE_2}
+      VITE_PAGE_3: ${PAGE_3}
+      VITE_PAGE_4: ${PAGE_4}
+      VITE_PAGE_5: ${PAGE_5}
+      VITE_PAGE_6: ${PAGE_6}
+    expose:
+      - "80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     depends_on:
-      - server
+      server:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options: *logging-options
+    <<: [*default-restart, *default-resources]
+    networks:
+      - videowall_net

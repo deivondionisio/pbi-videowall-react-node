@@ -7,7 +7,6 @@ networks:
   videowall_net:
     driver: bridge
 
-# Anchora apenas com OPCOES (sem 'driver' para evitar erro no schema do VS Code)
 x-logging-options: &logging-options
   max-size: "10m"
   max-file: "3"
@@ -33,11 +32,8 @@ services:
       dockerfile: Dockerfile
     environment:
       NODE_ENV: production
+      # Somente o segredo é injetado por ENV; demais IDs ficam no server/config/config.json
       CLIENT_SECRET: ${CLIENT_SECRET}
-      TENANT_ID: ${TENANT_ID:-}
-      CLIENT_ID: ${CLIENT_ID:-}
-      WORKSPACE_ID: ${WORKSPACE_ID:-}
-      REPORT_ID: ${REPORT_ID:-}
     expose:
       - "5300"
     healthcheck:
@@ -56,6 +52,7 @@ services:
   client:
     build:
       context: ./client
+
       dockerfile: Dockerfile
     environment:
       VITE_API_BASE: http://server:5300
